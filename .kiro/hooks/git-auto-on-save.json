@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Git 자동화 (6-2.py 저장 시)",
+      "trigger": "PostFileSave",
+      "description": "6-2.py 저장 시 prompt 변수가 채워져 있으면 자동으로 git 작업 실행",
+      "matcher": "6-2\\.py$",
+      "action": {
+        "type": "command",
+        "command": "python3 /Users/kangsikseo/Downloads/동료평가/6-2.py 2>&1 | tee /tmp/git-auto.log",
+        "timeout": 120
+      }
+    }
+  ]
+}
