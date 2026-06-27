@@ -542,12 +542,17 @@ def run_auto_git(
         print("\n[DRY-RUN] 실제 git 명령은 실행하지 않습니다.")
         return
 
+    # PR 포함 시: main→main PR은 불가 → feature 브랜치 자동 생성
+    import time as _time
+    _auto_branch_name = f"feature/auto-{_time.strftime('%Y%m%d-%H%M%S')}"
+    if "pr" in intents and branch == base_branch:
+        if "branch" not in intents:
+            intents.insert(0, "branch")
+
     # 작업 순서대로 실행
     for intent in intents:
         if intent == "branch":
-            new_branch = extract_branch_name(prompt)
-            if not new_branch:
-                new_branch = f"feature/auto-{branch}"
+            new_branch = extract_branch_name(prompt) or _auto_branch_name
             do_create_branch(repo_root, new_branch)
             branch = new_branch
 
@@ -562,7 +567,10 @@ def run_auto_git(
             do_push(repo_root, branch)
 
         elif intent == "pr":
-            if pr_title:
+            if branch == base_branch:
+                print(f"  [WARN] 브랜치({branch})가 base({base_branch})와 같아 PR을 건너뜁니다.")
+                print("         hint: feature 브랜치로 전환 후 시도하세요.")
+            elif pr_title:
                 do_create_pr(repo_root, pr_title, pr_body, base=base_branch)
 
     print(f"\n{'='*55}")
