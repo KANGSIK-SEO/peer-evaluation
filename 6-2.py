@@ -22,7 +22,7 @@ from typing import Optional
 # 환경변수 로드 (.env)
 # ─────────────────────────────────────────────
 def load_env(env_path: Optional[str] = None) -> None:
-    """현재 스크립트 위치의 .env 파일을 로드한다."""
+    """현재 스크립트 위치의 .env 파일을 로드한다""" #.삭제함
     if env_path is None:
         env_path = Path(__file__).parent / ".env"
     else:
@@ -377,7 +377,14 @@ def do_create_pr(repo: str, title: str, body: str, base: str = "main") -> None:
         capture_output=True, text=True, cwd=repo,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"PR 생성 실패: {result.stderr.strip()}")
+        stderr = result.stderr.strip()
+        # 이미 PR이 존재하는 경우 → 에러 대신 URL 안내
+        url_match = re.search(r"https://github\.com/\S+/pull/\d+", stderr)
+        if url_match:
+            print(f"  [INFO] 이 브랜치의 PR이 이미 존재합니다.")
+            print(f"  → {url_match.group(0)}")
+            return
+        raise RuntimeError(f"PR 생성 실패: {stderr}")
     print(f"  ✓ PR 생성 완료")
     print(f"  → {result.stdout.strip()}")
 
@@ -506,13 +513,20 @@ def run_auto_git(
 
     print(f"  인식된 작업: {' → '.join(intents)}\n")
 
-    # 변경사항 없으면 commit/stage는 건너뜀
+    # 변경사항 없으면 commit/stage/pr 모두 건너뜀
     has_changes = bool(status.strip())
     if not has_changes and any(x in intents for x in ["stage", "commit"]):
         print("[INFO] 변경사항이 없어 commit/stage 작업을 건너뜁니다.")
         intents = [x for x in intents if x not in ("stage", "commit")]
-        if not intents:
-            return
+
+    # 변경사항 없으면 PR도 의미 없음
+    if not has_changes and "pr" in intents:
+        print("[INFO] 변경사항이 없어 PR 작업도 건너뜁니다.")
+        intents = [x for x in intents if x != "pr"]
+
+    if not intents:
+        print("[INFO] 수행할 작업이 없습니다.")
+        return
 
     # AI 생성 (commit 또는 pr 포함 시)
     commit_title = commit_body = pr_title = pr_body = ""
@@ -542,12 +556,17 @@ def run_auto_git(
         print("\n[DRY-RUN] 실제 git 명령은 실행하지 않습니다.")
         return
 
+    # PR 포함 시: main→main PR은 불가 → feature 브랜치 자동 생성
+    import time as _time
+    _auto_branch_name = f"feature/auto-{_time.strftime('%Y%m%d-%H%M%S')}"
+    if "pr" in intents and branch == base_branch:
+        if "branch" not in intents:
+            intents.insert(0, "branch")
+
     # 작업 순서대로 실행
     for intent in intents:
         if intent == "branch":
-            new_branch = extract_branch_name(prompt)
-            if not new_branch:
-                new_branch = f"feature/auto-{branch}"
+            new_branch = extract_branch_name(prompt) or _auto_branch_name
             do_create_branch(repo_root, new_branch)
             branch = new_branch
 
@@ -562,7 +581,10 @@ def run_auto_git(
             do_push(repo_root, branch)
 
         elif intent == "pr":
-            if pr_title:
+            if branch == base_branch:
+                print(f"  [WARN] 브랜치({branch})가 base({base_branch})와 같아 PR을 건너뜁니다.")
+                print("         hint: feature 브랜치로 전환 후 시도하세요.")
+            elif pr_title:
                 do_create_pr(repo_root, pr_title, pr_body, base=base_branch)
 
     print(f"\n{'='*55}")
