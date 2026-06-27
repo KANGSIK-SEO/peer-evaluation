@@ -715,8 +715,7 @@ if __name__ == "__main__":
     # CLI 모드: python 6-2.py commit / pr / push / prompt "..."
     if len(sys.argv) > 1:
         cli_main()
-    # 노트북/직접 실행 모드: prompt 변수가 설정된 경우 자동 실행
-    #1234
+    # 노트북/직접 실행 모드
     elif prompt.strip():
         run_auto_git(
             prompt      = prompt,
