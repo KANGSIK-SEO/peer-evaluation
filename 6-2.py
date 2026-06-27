@@ -22,7 +22,7 @@ from typing import Optional
 # 환경변수 로드 (.env)
 # ─────────────────────────────────────────────
 def load_env(env_path: Optional[str] = None) -> None:
-    """현재 스크립트 위치의 .env 파일을 로드한다."""
+    """현재 스크립트 위치의 .env 파일을 로드한다""" #.삭제함
     if env_path is None:
         env_path = Path(__file__).parent / ".env"
     else:
