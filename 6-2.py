@@ -481,7 +481,9 @@ def run_auto_git(
     print(f"  safe_mode: {safe_mode} | dry_run: {dry_run}")
     print(f"{'='*55}\n")
 
-    # 저장소 확인
+    # 저장소 확인: "." 이면 스크립트 위치로 해석
+    if repo == ".":
+        repo = str(Path(__file__).parent)
     repo = os.path.expanduser(repo)
     repo_root = get_repo_root(repo)
     if not repo_root:
@@ -673,7 +675,7 @@ def cli_main(argv: Optional[list[str]] = None) -> None:
 #   dry_run      = False      # 미리보기 모드
 #   base_branch  = "main"     # PR base 브랜치
 
-repo        = "/Users/kangsikseo/Downloads/동료평가"  # ← 로컬 git 저장소 경로
+repo        = str(Path(__file__).parent)  # 이 파일이 있는 폴더 = 동료평가
 model       = FUGU_MODEL
 temperature = DEFAULT_TEMPERATURE
 max_tokens  = DEFAULT_MAX_TOKENS
