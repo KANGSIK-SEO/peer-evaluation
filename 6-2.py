@@ -378,15 +378,47 @@ def do_create_pr(repo: str, title: str, body: str, base: str = "main") -> None:
     )
     if result.returncode != 0:
         stderr = result.stderr.strip()
-        # 이미 PR이 존재하는 경우 → 에러 대신 URL 안내
+        # 이미 PR이 존재하는 경우 → 에러 대신 URL 안내 후 머지 시도
         url_match = re.search(r"https://github\.com/\S+/pull/\d+", stderr)
         if url_match:
-            print(f"  [INFO] 이 브랜치의 PR이 이미 존재합니다.")
-            print(f"  → {url_match.group(0)}")
+            pr_url = url_match.group(0)
+            print(f"  [INFO] 이 브랜치의 PR이 이미 존재합니다: {pr_url}")
+            _auto_merge_pr(repo, pr_url, base)
             return
         raise RuntimeError(f"PR 생성 실패: {stderr}")
-    print(f"  ✓ PR 생성 완료")
-    print(f"  → {result.stdout.strip()}")
+
+    pr_url = result.stdout.strip()
+    print(f"  ✓ PR 생성 완료 → {pr_url}")
+    _auto_merge_pr(repo, pr_url, base)
+
+
+def _auto_merge_pr(repo: str, pr_url: str, base: str = "main") -> None:
+    """PR을 머지하고 로컬 main을 최신화한다."""
+    # PR 번호 추출
+    pr_num = pr_url.rstrip("/").split("/")[-1]
+
+    print(f"  [INFO] PR #{pr_num} 자동 머지 중...")
+    merge_result = subprocess.run(
+        ["gh", "pr", "merge", pr_num, "--merge", "--delete-branch"],
+        capture_output=True, text=True, cwd=repo,
+    )
+    if merge_result.returncode != 0:
+        stderr = merge_result.stderr.strip()
+        # 이미 머지된 경우는 무시
+        if "already been merged" in stderr or "already merged" in stderr:
+            print(f"  [INFO] PR #{pr_num}은 이미 머지되어 있습니다.")
+        else:
+            print(f"  [WARN] 자동 머지 실패: {stderr}")
+            print(f"         수동으로 머지하세요: gh pr merge {pr_num} --merge")
+        return
+
+    print(f"  ✓ PR #{pr_num} 머지 완료 (feature 브랜치 삭제됨)")
+
+    # 로컬 main 최신화
+    _, err, code = run_git(["checkout", base], cwd=repo)
+    if code == 0:
+        run_git(["pull", "origin", base], cwd=repo)
+        print(f"  ✓ 로컬 {base} 브랜치 최신화 완료")
 
 # ─────────────────────────────────────────────
 # 자연어 의도 분석
