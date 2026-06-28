@@ -513,16 +513,17 @@ def run_auto_git(
 
     print(f"  인식된 작업: {' → '.join(intents)}\n")
 
-    # 변경사항 없으면 commit/stage/pr 모두 건너뜀
+    # 변경사항 없으면 commit/stage만 건너뜀
     has_changes = bool(status.strip())
     if not has_changes and any(x in intents for x in ["stage", "commit"]):
         print("[INFO] 변경사항이 없어 commit/stage 작업을 건너뜁니다.")
         intents = [x for x in intents if x not in ("stage", "commit")]
 
-    # 변경사항 없으면 PR도 의미 없음
-    if not has_changes and "pr" in intents:
-        print("[INFO] 변경사항이 없어 PR 작업도 건너뜁니다.")
-        intents = [x for x in intents if x != "pr"]
+    # pr 포함 시: 변경사항이 있으면 stage/commit/push를 자동으로 앞에 추가
+    if "pr" in intents and has_changes:
+        for step in ["push", "commit", "stage"]:
+            if step not in intents:
+                intents.insert(0, step)
 
     if not intents:
         print("[INFO] 수행할 작업이 없습니다.")
@@ -705,7 +706,7 @@ safe_mode   = False
 dry_run     = False
 base_branch = "main"
 
-prompt = ""  # ← 이 줄에 자연어 명령을 입력하세요 (예: "커밋하고 푸시해줘")
+prompt = ""  # ← 이 줄에 자연어 명령을 입력하세요 (예: "커밋하고 push해줘")
 
 # ─────────────────────────────────────────────
 # 엔트리 포인트
@@ -714,8 +715,7 @@ if __name__ == "__main__":
     # CLI 모드: python 6-2.py commit / pr / push / prompt "..."
     if len(sys.argv) > 1:
         cli_main()
-    # 노트북/직접 실행 모드: prompt 변수가 설정된 경우 자동 실행
-    #1234
+    # 노트북/직접 실행 모드
     elif prompt.strip():
         run_auto_git(
             prompt      = prompt,
