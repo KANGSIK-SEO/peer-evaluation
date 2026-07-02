@@ -391,6 +391,10 @@ def do_create_pr(repo: str, title: str, body: str, base: str = "main") -> None:
             print(f"  [INFO] 이 브랜치의 PR이 이미 존재합니다: {pr_url}")
             _auto_merge_pr(repo, pr_url, base)
             return
+        # base와 head 사이에 커밋 차이가 없는 경우 → 에러 대신 안내만 출력
+        if "No commits between" in stderr:
+            print(f"  [INFO] '{base}'와(과) 비교했을 때 새로운 변경사항이 없어 PR을 생성하지 않습니다.")
+            return
         raise RuntimeError(f"PR 생성 실패: {stderr}")
 
     pr_url = result.stdout.strip()
