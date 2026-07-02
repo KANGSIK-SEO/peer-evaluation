@@ -119,6 +119,12 @@ def get_recent_log(repo: str, n: int = 5) -> str:
     out, _, _ = run_git(["log", f"-{n}", "--oneline"], cwd=repo)
     return out
 
+
+def is_branch_pushed(repo: str, branch: str) -> bool:
+    """브랜치가 origin에 이미 존재하는지 확인한다."""
+    out, _, code = run_git(["ls-remote", "--exit-code", "--heads", "origin", branch], cwd=repo)
+    return code == 0 and bool(out.strip())
+
 # ─────────────────────────────────────────────
 # SAKANA API 호출
 # ─────────────────────────────────────────────
@@ -618,6 +624,9 @@ def run_auto_git(
                 print(f"  [WARN] 브랜치({branch})가 base({base_branch})와 같아 PR을 건너뜁니다.")
                 print("         hint: feature 브랜치로 전환 후 시도하세요.")
             elif pr_title:
+                if not is_branch_pushed(repo_root, branch):
+                    print(f"  [INFO] 브랜치 '{branch}'가 원격(origin)에 없어 먼저 push합니다...")
+                    do_push(repo_root, branch)
                 do_create_pr(repo_root, pr_title, pr_body, base=base_branch)
 
     print(f"\n{'='*55}")
