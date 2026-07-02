@@ -110,6 +110,20 @@ def get_git_diff(repo: str, staged: bool = False) -> str:
     return out
 
 
+def get_branch_diff(repo: str, base: str = "main") -> str:
+    """현재 브랜치가 base 이후로 가진 커밋의 diff를 반환한다."""
+    out, _, _ = run_git(["diff", "--stat", "--patch", f"{base}...HEAD"], cwd=repo)
+    return out
+
+
+def has_commits_since_base(repo: str, base: str = "main") -> bool:
+    """현재 브랜치에 base에는 없는 커밋이 있는지 확인한다."""
+    out, _, code = run_git(["rev-list", "--count", f"{base}..HEAD"], cwd=repo)
+    if code != 0:
+        return False
+    return int(out or "0") > 0
+
+
 def get_current_branch(repo: str) -> str:
     out, _, _ = run_git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=repo)
     return out or "main"
@@ -543,8 +557,9 @@ def run_auto_git(
     status = get_git_status(repo_root)
     staged_diff  = get_git_diff(repo_root, staged=True)
     working_diff = get_git_diff(repo_root, staged=False)
-    diff = staged_diff or working_diff
     branch = get_current_branch(repo_root)
+    branch_diff = get_branch_diff(repo_root, base_branch) if branch != base_branch else ""
+    diff = staged_diff or working_diff or branch_diff
 
     # 의도 파악
     intents = detect_intents(prompt)
@@ -557,6 +572,15 @@ def run_auto_git(
 
     # 변경사항 없으면 commit/stage만 건너뜀
     has_changes = bool(status.strip())
+    has_pr_commits = branch != base_branch and has_commits_since_base(repo_root, base_branch)
+
+    if "pr" in intents and not has_changes and not has_pr_commits:
+        print(f"[INFO] PR로 보낼 변경사항이 없습니다.")
+        print(f"       작업트리 변경사항: 없음")
+        print(f"       {base_branch} 이후 새 커밋: 없음")
+        print("       먼저 저장소 안의 파일을 수정한 뒤 저장하거나, 새 커밋을 만든 뒤 다시 실행하세요.")
+        return
+
     if not has_changes and any(x in intents for x in ["stage", "commit"]):
         print("[INFO] 변경사항이 없어 commit/stage 작업을 건너뜁니다.")
         intents = [x for x in intents if x not in ("stage", "commit")]
