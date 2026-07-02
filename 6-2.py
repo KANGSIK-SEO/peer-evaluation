@@ -281,10 +281,11 @@ def generate_commit_message(
         diff   = mask_sensitive(diff)
 
     system = (
-        "You are an expert Git commit message writer. "
-        "Given git status and diff, produce a concise commit message. "
-        "Follow Conventional Commits format. "
-        "Title must be max 72 characters. "
+        "당신은 Git 커밋 메시지를 작성하는 전문가입니다. "
+        "git status와 diff를 보고 간결한 커밋 메시지를 작성하세요. "
+        "제목은 Conventional Commits 형식(type: 한글 설명)을 따르세요. "
+        "제목은 72자 이내로 작성하세요. "
+        "body는 반드시 한국어로 작성하세요. "
         "Respond ONLY with JSON: {\"title\": \"...\", \"body\": \"...\"}"
     )
     user = f"## git status\n{status}\n\n## git diff\n{diff[:3000]}"
@@ -326,10 +327,12 @@ def generate_pr_draft(
         diff   = mask_sensitive(diff)
 
     system = (
-        "You are an expert GitHub Pull Request writer. "
-        "Given git changes and branch name, produce a PR title (max 80 chars) "
-        "and body with sections: ## Why, ## What, ## How to Test. "
-        "Each section must have bullet points. "
+        "당신은 GitHub Pull Request 초안을 작성하는 전문가입니다. "
+        "git 변경사항과 브랜치 이름을 보고 PR 제목과 본문을 작성하세요. "
+        "PR 제목은 80자 이내의 한국어로 작성하세요. "
+        "PR 본문은 반드시 한국어로 작성하고, 섹션 제목도 다음 한국어 형식을 사용하세요: "
+        "## 변경 이유, ## 변경 내용, ## 테스트 방법. "
+        "각 섹션은 bullet point로 작성하세요. "
         "Respond ONLY with JSON: {\"title\": \"...\", \"body\": \"...\"}"
     )
     user = (
